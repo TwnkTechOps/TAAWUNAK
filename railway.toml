@@ -1,8 +1,4 @@
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "apps/api/Dockerfile"
-
-[deploy]
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
+# Root Railway config - services should have their own configs
+# Backend service should use: apps/api/Dockerfile
+# Frontend service should use: apps/web-enterprise/Dockerfile
 
