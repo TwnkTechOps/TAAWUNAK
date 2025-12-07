@@ -1,0 +1,2386 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String                    @id @default(cuid())
+  email                     String                    @unique
+  passwordHash              String
+  fullName                  String
+  role                      Role                      @default(RESEARCHER)
+  suspended                 Boolean                   @default(false)
+  tokenVersion              Int                       @default(0)
+  emailVerifiedAt           DateTime?
+  mfaEnabled                Boolean                   @default(false)
+  mfaSecret                 String?
+  institutionId             String?
+  institution               Institution?              @relation(fields: [institutionId], references: [id])
+  ownedInstitutions         Institution[]             @relation("InstitutionOwner")
+  // Back-relations
+  ownedProjects             Project[]                 @relation("ProjectOwner")
+  documents                 Document[]                @relation("DocumentCreator")
+  reviews                   Review[]                  @relation("ReviewReviewer")
+  papers                    Paper[]                   @relation("PaperCreator")
+  paperVersions             PaperVersion[]            @relation("PaperVersionCreator")
+  paperReviews              PaperReview[]             @relation("PaperReviewer")
+  institutionalPaperReviews Paper[]                   @relation("PaperInstitutionalReviewer")
+  paperCollaborations       PaperCollaborator[]       @relation("PaperCollaborator")
+  sharedPapers              PaperShare[]              @relation("PaperSharedWith")
+  memberships               Membership[]
+  credentials               Credential[]
+  auditEvents               AuditEvent[]              @relation("UserAuditEvents")
+  // Top-Down Collaboration Model
+  proposalApprovals         ProposalApproval[]        @relation("ProposalApprovals")
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  Token                     Token[]
+  Device                    Device[]
+  OrgUnit                   OrgUnit[]
+  // Project Management relations
+  projectParticipants       ProjectParticipant[]
+  tasks                     Task[]
+  projectMessages           ProjectMessage[]
+  projectAnnouncements      ProjectAnnouncement[]
+  documentVersions          DocumentVersion[]
+  notifications             Notification[]
+  // Communication & Networking relations
+  sentDirectMessages        DirectMessage[]           @relation("DirectMessageSender")
+  receivedDirectMessages    DirectMessage[]           @relation("DirectMessageReceiver")
+  groupChatMembers          GroupChatMember[]
+  discussionPosts           DiscussionPost[]
+  discussionReplies         DiscussionReply[]
+  createdMeetings           VirtualMeeting[]          @relation("MeetingCreator")
+  meetingParticipants       MeetingParticipant[]
+  createdEvents             Event[]                   @relation("EventCreator")
+  eventRegistrations        EventRegistration[]
+  channelMembers            ChannelMember[]
+  knowledgeArticles         KnowledgeArticle[]
+  messageReactions          MessageReaction[]
+  mentorshipMatches         MentorshipMatch[]         @relation("MentorshipMentor")
+  mentorshipMatchesAsMentee MentorshipMatch[]         @relation("MentorshipMentee")
+  contentReports            ContentReport[]
+  blockedUsers              UserBlock[]               @relation("UserBlockBlocker")
+  blockedByUsers            UserBlock[]               @relation("UserBlockBlocked")
+  userPreferences           UserPreference?
+  // Communication & Networking additional relations
+  createdGroupChats         GroupChat[]
+  groupChatMessages         GroupChatMessage[]
+  createdForums             DiscussionForum[]
+  createdChannels           CommunityChannel[]
+  channelPosts              ChannelPost[]
+  sharedFiles               FileShare[]
+  calendarEvents            CalendarEvent[]
+  // Payment Gateway relations
+  digitalWallet             DigitalWallet?
+  paymentTransactions       PaymentTransaction[]
+  invoices                  Invoice[]
+  subscriptions             Subscription[]
+  refunds                   Refund[]
+  disputes                  Dispute[]
+  fraudAlerts               FraudAlert[]
+  // Inclusive R&D Participation
+  rdParticipants            RDParticipant[]           @relation("RDParticipant")
+  rdInvitations             RDParticipantInvitation[] @relation("RDParticipantInviter")
+  // Early Research Engagement in Schools
+  studentProjects           StudentProject[]          @relation("StudentProjects")
+  teacherSupervisedProjects StudentProject[]          @relation("TeacherSupervisedProjects")
+  mentoredStudentProjects   StudentProject[]          @relation("MentoredStudentProjects")
+  studentSubmissions        StudentSubmission[]       @relation("StudentSubmissions")
+  studentBadges             StudentBadge[]            @relation("StudentBadges")
+  clubMemberships           ClubMember[]              @relation("ClubMemberships")
+  clubAdvisor               InnovationClub[]          @relation("ClubAdvisor")
+  competitionJudges         CompetitionJudge[]        @relation("CompetitionJudges")
+  certificates              Certificate[]            @relation("Certificates")
+  schoolMentors             SchoolMentorship[]       @relation("SchoolMentors")
+  mentoredStudents          SchoolMentorship[]       @relation("MentoredStudents")
+}
+
+model Token {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  deviceId  String
+  ua        String?
+  ip        String?
+  revoked   Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([userId, deviceId])
+}
+
+model Institution {
+  id                 String                    @id @default(cuid())
+  name               String                    @unique
+  type               InstitutionType
+  ownerUserId        String?
+  owner              User?                     @relation("InstitutionOwner", fields: [ownerUserId], references: [id])
+  users              User[]
+  projects           Project[]
+  papers             Paper[]                   @relation("InstitutionPapers")
+  sharedPapers       PaperShare[]              @relation("PaperSharedWithInstitution")
+  patents            Patent[]                  @relation("InstitutionPatent")
+  rdInvitations      RDParticipantInvitation[] @relation("RDParticipantInvitation")
+  memberships        Membership[]
+  verified           Boolean                   @default(false)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  OrgUnit            OrgUnit[]
+  // Payment Gateway relations
+  invoices           Invoice[]
+  subscriptions      Subscription[]
+  // Inclusive R&D Participation
+  participationQuota ParticipationQuota?
+  participants       RDParticipant[]
+  invitations        RDParticipantInvitation[]
+  // Top-Down Collaboration Model
+  enterpriseInterests EnterpriseInterest[]    @relation("EnterpriseInterests")
+  proposalMatches     ProposalMatch[]          @relation("ProposalMatches")
+  // Early Research Engagement in Schools
+  schoolStudentProjects StudentProject[]       @relation("SchoolStudentProjects")
+  schoolInnovationClubs InnovationClub[]      @relation("SchoolInnovationClubs")
+  schoolMentorships    SchoolMentorship[]      @relation("SchoolMentorships")
+}
+
+model Project {
+  id                  String                    @id @default(cuid())
+  title               String
+  summary             String
+  description         String? // Extended description
+  ownerId             String
+  owner               User                      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  institutionId       String
+  institution         Institution               @relation(fields: [institutionId], references: [id])
+  status              ProjectStatus             @default(DRAFT)
+  templateId          String?
+  template            ProjectTemplate?          @relation(fields: [templateId], references: [id])
+  milestones          Milestone[]
+  documents           Document[]
+  proposals           Proposal[]
+  applications        Application[]             @relation("ProjectApplications")
+  papers              Paper[]                   @relation("ProjectPapers")
+  participants        ProjectParticipant[]
+  messages            ProjectMessage[]
+  announcements       ProjectAnnouncement[]
+  meetings            VirtualMeeting[]
+  // Payment Gateway relations
+  paymentTransactions PaymentTransaction[]
+  rdParticipants      RDParticipant[]           @relation("RDParticipantProject")
+  rdInvitations       RDParticipantInvitation[] @relation("RDParticipantInvitationProject")
+  patents             Patent[]                  @relation("ProjectPatent")
+  convertedProposals  Proposal[]                @relation("ProposalProject")
+  convertedStudentProjects StudentProject[]     @relation("StudentProjectConversion")
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  status      MilestoneStatus @default(PENDING)
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id])
+  tasks       Task[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Document {
+  id          String            @id @default(cuid())
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id])
+  name        String
+  s3Key       String
+  contentType String
+  size        Int? // File size in bytes
+  createdById String
+  createdBy   User              @relation("DocumentCreator", fields: [createdById], references: [id])
+  versions    DocumentVersion[]
+  createdAt   DateTime          @default(now())
+}
+
+model FundingCall {
+  id           String        @id @default(cuid())
+  title        String
+  description  String
+  deadline     DateTime
+  applications Application[]
+  proposals    Proposal[]    @relation("ProposalFundingCall")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Proposal {
+  id                    String                @id @default(cuid())
+  projectId             String
+  project               Project               @relation(fields: [projectId], references: [id])
+  content               String
+  trl                   Int
+  status                ProposalStatus        @default(SUBMITTED)
+  reviews               Review[]
+  // Top-Down Collaboration Model fields
+  tier                  ProposalTier?         @default(TIER_4)
+  tierScore             Float?
+  evaluation            ProposalEvaluation?
+  enterpriseInterests   EnterpriseInterest[]
+  matches               ProposalMatch[]
+  feedbacks             ProposalFeedback[]
+  approvals             ProposalApproval[]
+  fundingCallId         String?
+  fundingCall           FundingCall?          @relation("ProposalFundingCall", fields: [fundingCallId], references: [id])
+  strategicAlignment    String[]              @default([]) // National priorities alignment
+  innovationScore       Float?
+  feasibilityScore      Float?
+  qualityScore          Float?
+  overallScore          Float?
+  evaluatedAt           DateTime?
+  evaluatedBy            String?              // AI or system identifier
+  isPublic              Boolean               @default(false) // Visible to enterprises
+  conversionStatus      ProposalConversionStatus @default(NOT_CONVERTED)
+  convertedToProjectId  String?
+  convertedToProject    Project?             @relation("ProposalProject", fields: [convertedToProjectId], references: [id])
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([tier])
+  @@index([status])
+  @@index([overallScore])
+  @@index([isPublic])
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  fundingCallId String
+  fundingCall   FundingCall       @relation(fields: [fundingCallId], references: [id])
+  projectId     String
+  project       Project           @relation("ProjectApplications", fields: [projectId], references: [id])
+  status        ApplicationStatus @default(SUBMITTED)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  reviewerId String
+  reviewer   User     @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+  score      Int
+  comments   String?
+  createdAt  DateTime @default(now())
+}
+
+model Paper {
+  id                          String                    @id @default(cuid())
+  title                       String
+  abstract                    String
+  keywords                    String[]                  @default([])
+  domainTags                  String[]                  @default([])
+  doi                         String?                   @unique
+  orcidId                     String?
+  scopusId                    String?
+  projectId                   String?
+  project                     Project?                  @relation("ProjectPapers", fields: [projectId], references: [id])
+  institutionId               String
+  institution                 Institution               @relation("InstitutionPapers", fields: [institutionId], references: [id])
+  status                      PaperStatus               @default(DRAFT)
+  createdById                 String
+  createdBy                   User                      @relation("PaperCreator", fields: [createdById], references: [id])
+  // Version Control
+  versions                    PaperVersion[]            @relation("PaperVersions")
+  currentVersionId            String?
+  currentVersion              PaperVersion?             @relation("PaperCurrentVersion", fields: [currentVersionId], references: [id])
+  // Review & Approval
+  institutionalReviewStatus   InstitutionalReviewStatus @default(PENDING)
+  institutionalReviewerId     String?
+  institutionalReviewer       User?                     @relation("PaperInstitutionalReviewer", fields: [institutionalReviewerId], references: [id])
+  institutionalReviewComments String?
+  peerReviews                 PaperReview[]
+  // Metadata & Classification
+  nationalClassification      String? // Saudi-specific academic taxonomy
+  publicationDate             DateTime?
+  // Impact Analytics
+  downloadCount               Int                       @default(0)
+  citationCount               Int                       @default(0)
+  viewCount                   Int                       @default(0)
+  // Plagiarism Check
+  plagiarismScore             Float?
+  plagiarismCheckedAt         DateTime?
+  plagiarismReport            Json?
+  // Access Control
+  accessLevel                 PaperAccessLevel          @default(INSTITUTION)
+  sharedWith                  PaperShare[]
+  // Cross-links
+  patentId                    String?
+  patent                      Patent?                   @relation("PaperPatent", fields: [patentId], references: [id])
+  // Collaborators
+  collaborators               PaperCollaborator[]
+  // Citations
+  citations                   PaperCitation[]           @relation("PaperCitations")
+  citedBy                     PaperCitation[]           @relation("PaperCitedBy")
+  // Compliance
+  archived                    Boolean                   @default(false)
+  archivedAt                  DateTime?
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+}
+
+model PaperVersion {
+  id                   String   @id @default(cuid())
+  paperId              String
+  paper                Paper    @relation("PaperVersions", fields: [paperId], references: [id], onDelete: Cascade)
+  currentVersionPapers Paper[]  @relation("PaperCurrentVersion")
+  version              Int
+  title                String
+  abstract             String
+  content              String? // Full paper content
+  fileUrl              String? // S3 URL for PDF
+  s3Key                String?
+  contentType          String?
+  size                 Int?
+  changeLog            String?
+  createdById          String
+  createdBy            User     @relation("PaperVersionCreator", fields: [createdById], references: [id])
+  createdAt            DateTime @default(now())
+
+  @@unique([paperId, version])
+  @@index([paperId])
+}
+
+model PaperReview {
+  id          String            @id @default(cuid())
+  paperId     String
+  paper       Paper             @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  reviewerId  String
+  reviewer    User              @relation("PaperReviewer", fields: [reviewerId], references: [id])
+  reviewType  PaperReviewType
+  score       Int?
+  comments    String?
+  status      PaperReviewStatus @default(PENDING)
+  submittedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([paperId, reviewerId, reviewType])
+  @@index([paperId])
+}
+
+model PaperCollaborator {
+  id        String                @id @default(cuid())
+  paperId   String
+  paper     Paper                 @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User                  @relation("PaperCollaborator", fields: [userId], references: [id])
+  role      PaperCollaboratorRole @default(CO_AUTHOR)
+  orcidId   String?
+  createdAt DateTime              @default(now())
+
+  @@unique([paperId, userId])
+  @@index([paperId])
+}
+
+model PaperShare {
+  id                      String          @id @default(cuid())
+  paperId                 String
+  paper                   Paper           @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  sharedWithUserId        String?
+  sharedWithUser          User?           @relation("PaperSharedWith", fields: [sharedWithUserId], references: [id])
+  sharedWithInstitutionId String?
+  sharedWithInstitution   Institution?    @relation("PaperSharedWithInstitution", fields: [sharedWithInstitutionId], references: [id])
+  permission              PaperPermission @default(VIEW)
+  createdAt               DateTime        @default(now())
+
+  @@index([paperId])
+}
+
+model PaperCitation {
+  id            String       @id @default(cuid())
+  citingPaperId String
+  citingPaper   Paper        @relation("PaperCitations", fields: [citingPaperId], references: [id], onDelete: Cascade)
+  citedPaperId  String
+  citedPaper    Paper        @relation("PaperCitedBy", fields: [citedPaperId], references: [id], onDelete: Cascade)
+  citationType  CitationType @default(REFERENCE)
+  context       String? // Context where citation appears
+  createdAt     DateTime     @default(now())
+
+  @@unique([citingPaperId, citedPaperId])
+  @@index([citingPaperId])
+  @@index([citedPaperId])
+}
+
+model Patent {
+  id            String      @id @default(cuid())
+  patentNumber  String      @unique
+  title         String
+  description   String?
+  papers        Paper[]     @relation("PaperPatent")
+  projectId     String?
+  project       Project?    @relation("ProjectPatent", fields: [projectId], references: [id])
+  institutionId String
+  institution   Institution @relation("InstitutionPatent", fields: [institutionId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum PaperStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  INSTITUTIONAL_REVIEW
+  PEER_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum InstitutionalReviewStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum PaperReviewType {
+  INTERNAL
+  EXTERNAL
+  PEER
+}
+
+enum PaperReviewStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+enum PaperAccessLevel {
+  PRIVATE
+  INSTITUTION
+  COLLABORATORS
+  PUBLIC
+}
+
+enum PaperCollaboratorRole {
+  FIRST_AUTHOR
+  CO_AUTHOR
+  CORRESPONDING_AUTHOR
+  CONTRIBUTOR
+}
+
+enum PaperPermission {
+  VIEW
+  EDIT
+  REVIEW
+  ADMIN
+}
+
+enum CitationType {
+  REFERENCE
+  IN_TEXT
+  FOOTNOTE
+}
+
+enum Role {
+  ADMIN
+  INSTITUTION_ADMIN
+  RESEARCHER
+  REVIEWER
+  COMPANY_USER
+  STUDENT
+}
+
+enum InstitutionType {
+  UNIVERSITY
+  COMPANY
+  SCHOOL
+  RESEARCH_CENTER
+  TECHNICAL_COLLEGE
+  VOCATIONAL_SCHOOL
+  SECONDARY_SCHOOL
+}
+
+// Inclusive R&D Participation Models
+model ParticipationQuota {
+  id             String            @id @default(cuid())
+  institutionId  String            @unique
+  institution    Institution       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  tier           ParticipationTier
+  totalQuota     Int               @default(0)
+  usedQuota      Int               @default(0)
+  availableQuota Int               @default(0)
+  skillAreas     String[]          @default([])
+  genderQuota    GenderQuota?
+  lastUpdatedBy  String?
+  lastUpdatedAt  DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  createdAt      DateTime          @default(now())
+}
+
+model GenderQuota {
+  id                   String             @id @default(cuid())
+  participationQuotaId String             @unique
+  participationQuota   ParticipationQuota @relation(fields: [participationQuotaId], references: [id], onDelete: Cascade)
+  maleQuota            Int                @default(0)
+  femaleQuota          Int                @default(0)
+  otherQuota           Int                @default(0)
+  maleUsed             Int                @default(0)
+  femaleUsed           Int                @default(0)
+  otherUsed            Int                @default(0)
+  updatedAt            DateTime           @updatedAt
+  createdAt            DateTime           @default(now())
+}
+
+model RDParticipant {
+  id            String            @id @default(cuid())
+  institutionId String
+  institution   Institution       @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User              @relation("RDParticipant", fields: [userId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?          @relation("RDParticipantProject", fields: [projectId], references: [id])
+  role          ParticipantRole
+  skillArea     String?
+  gender        Gender?
+  status        ParticipantStatus @default(ACTIVE)
+  assignedAt    DateTime          @default(now())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([institutionId, userId, projectId])
+  @@index([institutionId])
+  @@index([projectId])
+}
+
+model RDParticipantInvitation {
+  id                   String           @id @default(cuid())
+  institutionId        String
+  institution          Institution      @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  invitedInstitutionId String
+  invitedInstitution   Institution      @relation("RDParticipantInvitation", fields: [invitedInstitutionId], references: [id])
+  projectId            String?
+  project              Project?         @relation("RDParticipantInvitationProject", fields: [projectId], references: [id])
+  skillAreas           String[]
+  quotaAllocated       Int?
+  status               InvitationStatus @default(PENDING)
+  invitedBy            String
+  invitedByUser        User             @relation("RDParticipantInviter", fields: [invitedBy], references: [id])
+  message              String?
+  respondedAt          DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([institutionId])
+  @@index([invitedInstitutionId])
+  @@index([projectId])
+}
+
+enum ParticipationTier {
+  TIER_1_UNIVERSITY
+  TIER_2_TECHNICAL_COLLEGE
+  TIER_3_VOCATIONAL_SCHOOL
+  TIER_4_SECONDARY_SCHOOL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum ParticipantRole {
+  OWNER
+  COLLABORATOR
+  REVIEWER
+  VIEWER
+}
+
+enum ProposalStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  INSTITUTIONAL_APPROVAL
+  MINISTRY_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  CONVERTED_TO_PROJECT
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+// IAM additions
+
+model Membership {
+  id            String           @id @default(cuid())
+  userId        String
+  institutionId String
+  role          Role
+  status        MembershipStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  user          User             @relation(fields: [userId], references: [id])
+  institution   Institution      @relation(fields: [institutionId], references: [id])
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+model Credential {
+  id        String           @id @default(cuid())
+  userId    String
+  type      CredentialType
+  status    CredentialStatus @default(PENDING)
+  s3Key     String?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+}
+
+enum CredentialType {
+  ORCID
+  ID_DOC
+  CERT
+}
+
+enum CredentialStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ip          String?
+  ua          String?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("UserAuditEvents", fields: [actorUserId], references: [id])
+}
+
+model OrgUnit {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  parentId      String?
+  parent        OrgUnit?    @relation("OrgUnitToParent", fields: [parentId], references: [id])
+  children      OrgUnit[]   @relation("OrgUnitToParent")
+  ownerUserId   String?
+  owner         User?       @relation(fields: [ownerUserId], references: [id])
+  createdAt     DateTime    @default(now())
+}
+
+// Project Management Models
+
+model ProjectTemplate {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  category    String // e.g., "Research", "Innovation", "Collaboration"
+  config      Json // Template configuration (milestones, tasks, etc.)
+  createdBy   String
+  isPublic    Boolean   @default(false)
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ProjectParticipant {
+  id        String            @id @default(cuid())
+  projectId String
+  userId    String
+  role      ParticipantRole   @default(COLLABORATOR)
+  status    ParticipantStatus @default(PENDING)
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  milestoneId String
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  assignedTo  String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  assignee    User?      @relation(fields: [assignedTo], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([milestoneId])
+  @@index([assignedTo])
+}
+
+model ProjectMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  content   String
+  threadId  String? // For threaded conversations (self-reference)
+  parentId  String? // Parent message for threading
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([threadId])
+  @@index([userId])
+}
+
+model ProjectAnnouncement {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  title     String
+  content   String
+  priority  String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    Int
+  s3Key      String
+  uploadedBy String
+  changeNote String?
+  size       Int? // File size in bytes
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // PROJECT, PROPOSAL, TASK, DEADLINE, SYSTEM, MESSAGE
+  title     String
+  message   String
+  link      String? // URL to related resource
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+}
+
+// ============================================
+// Communication & Networking Module Models
+// ============================================
+
+// Direct Messaging
+model DirectMessage {
+  id          String            @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  encrypted   Boolean           @default(true)
+  read        Boolean           @default(false)
+  readAt      DateTime?
+  delivered   Boolean           @default(false)
+  deliveredAt DateTime?
+  sender      User              @relation("DirectMessageSender", fields: [senderId], references: [id])
+  receiver    User              @relation("DirectMessageReceiver", fields: [receiverId], references: [id])
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  threadId    String? // For message threading
+  parentId    String? // Parent message reference
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([threadId])
+  @@index([createdAt])
+}
+
+// Group Chat
+model GroupChat {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  avatar      String? // S3 key for group avatar
+  isPrivate   Boolean            @default(false)
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id])
+  members     GroupChatMember[]
+  messages    GroupChatMessage[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([createdById])
+}
+
+model GroupChatMember {
+  id          String        @id @default(cuid())
+  groupChatId String
+  userId      String
+  role        GroupChatRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  leftAt      DateTime?
+  groupChat   GroupChat     @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupChatId, userId])
+  @@index([userId])
+  @@index([groupChatId])
+}
+
+enum GroupChatRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model GroupChatMessage {
+  id          String            @id @default(cuid())
+  groupChatId String
+  userId      String
+  content     String
+  encrypted   Boolean           @default(true)
+  groupChat   GroupChat         @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id])
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  threadId    String?
+  parentId    String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([groupChatId])
+  @@index([userId])
+  @@index([threadId])
+  @@index([createdAt])
+}
+
+// Discussion Forums
+model DiscussionForum {
+  id          String           @id @default(cuid())
+  title       String
+  description String?
+  category    String? // e.g., "AI", "Renewable Energy", "EdTech"
+  isPublic    Boolean          @default(true)
+  isArchived  Boolean          @default(false)
+  createdById String
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  posts       DiscussionPost[]
+  tags        String[] // Array of tags
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([category])
+  @@index([isPublic])
+  @@index([createdById])
+}
+
+model DiscussionPost {
+  id          String            @id @default(cuid())
+  forumId     String
+  userId      String
+  title       String
+  content     String // Rich text content
+  isPinned    Boolean           @default(false)
+  isLocked    Boolean           @default(false)
+  upvotes     Int               @default(0)
+  downvotes   Int               @default(0)
+  views       Int               @default(0)
+  forum       DiscussionForum   @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id])
+  replies     DiscussionReply[]
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  tags        String[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([forumId])
+  @@index([userId])
+  @@index([isPinned])
+  @@index([createdAt])
+}
+
+model DiscussionReply {
+  id          String            @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  parentId    String? // For nested replies
+  upvotes     Int               @default(0)
+  downvotes   Int               @default(0)
+  post        DiscussionPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id])
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+// Virtual Meetings
+model VirtualMeeting {
+  id                String               @id @default(cuid())
+  title             String
+  description       String?
+  startTime         DateTime
+  endTime           DateTime?
+  meetingType       MeetingType          @default(PLATFORM)
+  externalMeetingId String? // ID from external service (Zoom, Teams, etc.)
+  meetingUrl        String?
+  recordingUrl      String? // S3 key for recording
+  isRecorded        Boolean              @default(false)
+  createdById       String
+  createdBy         User                 @relation("MeetingCreator", fields: [createdById], references: [id])
+  participants      MeetingParticipant[]
+  transcripts       MeetingTranscript[]
+  projectId         String? // Optional link to project
+  project           Project?             @relation(fields: [projectId], references: [id])
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([createdById])
+  @@index([startTime])
+  @@index([projectId])
+}
+
+enum MeetingType {
+  PLATFORM // Platform-native meeting
+  ZOOM
+  TEAMS
+  GOOGLE_MEET
+}
+
+model MeetingParticipant {
+  id        String            @id @default(cuid())
+  meetingId String
+  userId    String
+  status    ParticipantStatus @default(PENDING)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  meeting   VirtualMeeting    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+  @@index([meetingId])
+}
+
+model MeetingTranscript {
+  id          String                @id @default(cuid())
+  meetingId   String
+  content     String // Full transcript text
+  summary     String? // AI-generated summary
+  language    String                @default("en")
+  isPublic    Boolean               @default(false)
+  accessLevel TranscriptAccessLevel @default(PARTICIPANTS)
+  meeting     VirtualMeeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([meetingId])
+  @@index([isPublic])
+}
+
+enum TranscriptAccessLevel {
+  CREATOR_ONLY
+  PARTICIPANTS
+  PROJECT_MEMBERS
+  INSTITUTION
+  PUBLIC
+}
+
+// Events & Webinars
+model Event {
+  id                   String              @id @default(cuid())
+  title                String
+  description          String
+  eventType            EventType
+  startTime            DateTime
+  endTime              DateTime
+  timezone             String              @default("UTC")
+  location             String? // Physical or virtual location
+  isVirtual            Boolean             @default(true)
+  maxAttendees         Int?
+  registrationRequired Boolean             @default(false)
+  registrationDeadline DateTime?
+  isPublic             Boolean             @default(true)
+  createdById          String
+  createdBy            User                @relation("EventCreator", fields: [createdById], references: [id])
+  registrations        EventRegistration[]
+  recordings           String[] // Array of S3 keys for recordings
+  tags                 String[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([startTime])
+  @@index([eventType])
+  @@index([isPublic])
+  @@index([createdById])
+}
+
+enum EventType {
+  WORKSHOP
+  HACKATHON
+  CONFERENCE
+  WEBINAR
+  SEMINAR
+  NETWORKING
+}
+
+model EventRegistration {
+  id           String             @id @default(cuid())
+  eventId      String
+  userId       String
+  status       RegistrationStatus @default(REGISTERED)
+  attended     Boolean            @default(false)
+  event        Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registeredAt DateTime           @default(now())
+  checkedInAt  DateTime?
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+}
+
+// Community Channels
+model CommunityChannel {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  category    String // e.g., "AI", "Renewable Energy", "EdTech"
+  isPublic    Boolean         @default(true)
+  isArchived  Boolean         @default(false)
+  avatar      String? // S3 key for channel avatar
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  members     ChannelMember[]
+  posts       ChannelPost[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([category])
+  @@index([isPublic])
+  @@index([createdById])
+}
+
+model ChannelMember {
+  id        String           @id @default(cuid())
+  channelId String
+  userId    String
+  role      ChannelRole      @default(MEMBER)
+  joinedAt  DateTime         @default(now())
+  leftAt    DateTime?
+  channel   CommunityChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@index([channelId])
+}
+
+enum ChannelRole {
+  OWNER
+  MODERATOR
+  MEMBER
+}
+
+model ChannelPost {
+  id          String            @id @default(cuid())
+  channelId   String
+  userId      String
+  content     String
+  isPinned    Boolean           @default(false)
+  channel     CommunityChannel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id])
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([channelId])
+  @@index([userId])
+  @@index([isPinned])
+  @@index([createdAt])
+}
+
+// Knowledge Sharing
+model KnowledgeArticle {
+  id          String            @id @default(cuid())
+  title       String
+  content     String // Rich text/Markdown content
+  excerpt     String?
+  category    String?
+  tags        String[]
+  isPublished Boolean           @default(false)
+  publishedAt DateTime?
+  publishedTo String[] // External platforms (Medium, LinkedIn, etc.)
+  viewCount   Int               @default(0)
+  authorId    String
+  author      User              @relation(fields: [authorId], references: [id])
+  attachments FileShare[]
+  reactions   MessageReaction[]
+  version     Int               @default(1)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([authorId])
+  @@index([isPublished])
+  @@index([category])
+  @@index([publishedAt])
+}
+
+// File Sharing
+model FileShare {
+  id                 String            @id @default(cuid())
+  s3Key              String
+  fileName           String
+  fileSize           Int // Bytes
+  contentType        String
+  encrypted          Boolean           @default(true)
+  sharedById         String
+  sharedBy           User              @relation(fields: [sharedById], references: [id])
+  // Polymorphic relations
+  directMessageId    String?
+  directMessage      DirectMessage?    @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+  groupChatMessageId String?
+  groupChatMessage   GroupChatMessage? @relation(fields: [groupChatMessageId], references: [id], onDelete: Cascade)
+  discussionPostId   String?
+  discussionPost     DiscussionPost?   @relation(fields: [discussionPostId], references: [id], onDelete: Cascade)
+  discussionReplyId  String?
+  discussionReply    DiscussionReply?  @relation(fields: [discussionReplyId], references: [id], onDelete: Cascade)
+  channelPostId      String?
+  channelPost        ChannelPost?      @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+  knowledgeArticleId String?
+  knowledgeArticle   KnowledgeArticle? @relation(fields: [knowledgeArticleId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+
+  @@index([sharedById])
+  @@index([contentType])
+}
+
+// Message Reactions
+model MessageReaction {
+  id                 String            @id @default(cuid())
+  userId             String
+  emoji              String // Unicode emoji or custom emoji code
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Polymorphic relations
+  directMessageId    String?
+  directMessage      DirectMessage?    @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+  groupChatMessageId String?
+  groupChatMessage   GroupChatMessage? @relation(fields: [groupChatMessageId], references: [id], onDelete: Cascade)
+  discussionPostId   String?
+  discussionPost     DiscussionPost?   @relation(fields: [discussionPostId], references: [id], onDelete: Cascade)
+  discussionReplyId  String?
+  discussionReply    DiscussionReply?  @relation(fields: [discussionReplyId], references: [id], onDelete: Cascade)
+  channelPostId      String?
+  channelPost        ChannelPost?      @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+  knowledgeArticleId String?
+  knowledgeArticle   KnowledgeArticle? @relation(fields: [knowledgeArticleId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+
+  @@unique([userId, directMessageId, emoji])
+  @@unique([userId, groupChatMessageId, emoji])
+  @@unique([userId, discussionPostId, emoji])
+  @@unique([userId, discussionReplyId, emoji])
+  @@unique([userId, channelPostId, emoji])
+  @@unique([userId, knowledgeArticleId, emoji])
+  @@index([userId])
+}
+
+// Mentorship & Matchmaking
+model MentorshipMatch {
+  id          String      @id @default(cuid())
+  mentorId    String
+  menteeId    String
+  matchScore  Float // Compatibility score 0-1
+  status      MatchStatus @default(PENDING)
+  suggestedAt DateTime    @default(now())
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  mentor      User        @relation("MentorshipMentor", fields: [mentorId], references: [id])
+  mentee      User        @relation("MentorshipMentee", fields: [menteeId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([mentorId, menteeId])
+  @@index([mentorId])
+  @@index([menteeId])
+  @@index([status])
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  ACTIVE
+  ENDED
+}
+
+// User Preferences
+model UserPreference {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language              String   @default("en")
+  timezone              String   @default("UTC")
+  emailNotifications    Boolean  @default(true)
+  pushNotifications     Boolean  @default(true)
+  messageNotifications  Boolean  @default(true)
+  meetingReminders      Boolean  @default(true)
+  eventNotifications    Boolean  @default(true)
+  doNotDisturb          Boolean  @default(false)
+  doNotDisturbStart     String? // HH:mm format
+  doNotDisturbEnd       String? // HH:mm format
+  autoTranslate         Boolean  @default(false)
+  translationTargetLang String? // Target language for auto-translation
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Content Moderation
+model ContentReport {
+  id          String            @id @default(cuid())
+  reporterId  String
+  reporter    User              @relation(fields: [reporterId], references: [id])
+  contentType ReportContentType
+  contentId   String // ID of reported content
+  reason      ReportReason
+  description String?
+  status      ReportStatus      @default(PENDING)
+  reviewedBy  String? // Admin who reviewed
+  reviewedAt  DateTime?
+  actionTaken String? // Action taken (warning, delete, etc.)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([reporterId])
+  @@index([contentType, contentId])
+  @@index([status])
+}
+
+enum ReportContentType {
+  DIRECT_MESSAGE
+  GROUP_MESSAGE
+  DISCUSSION_POST
+  DISCUSSION_REPLY
+  CHANNEL_POST
+  KNOWLEDGE_ARTICLE
+  MEETING_TRANSCRIPT
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE_CONTENT
+  COPYRIGHT_VIOLATION
+  MISINFORMATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+// User Blocking
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker   User     @relation("UserBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("UserBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+// Calendar Integration
+model CalendarEvent {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  timezone        String             @default("UTC")
+  isAllDay        Boolean            @default(false)
+  location        String?
+  externalEventId String? // ID from external calendar (Google, Outlook)
+  calendarType    CalendarType       @default(PLATFORM)
+  sourceType      CalendarSourceType
+  sourceId        String? // ID of source (meeting, event, task, etc.)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([startTime])
+  @@index([sourceType, sourceId])
+}
+
+enum CalendarType {
+  PLATFORM
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum CalendarSourceType {
+  MEETING
+  EVENT
+  TASK
+  MILESTONE
+  CUSTOM
+}
+
+// Translation Cache
+model TranslationCache {
+  id             String   @id @default(cuid())
+  sourceText     String
+  sourceLang     String
+  targetLang     String
+  translatedText String
+  provider       String   @default("HUMAIN")
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([sourceText, sourceLang, targetLang])
+  @@index([expiresAt])
+}
+
+// ============================================
+// Payment Gateway Module Models
+// ============================================
+
+// Payment Gateway Configuration
+model PaymentGateway {
+  id                  String             @id @default(cuid())
+  name                PaymentGatewayName
+  displayName         String
+  isActive            Boolean            @default(false)
+  isSandbox           Boolean            @default(true)
+  apiKey              String? // Encrypted
+  apiSecret           String? // Encrypted
+  merchantId          String?
+  webhookUrl          String?
+  config              Json? // Gateway-specific configuration
+  supportedCurrencies String[]           @default(["SAR"])
+  feePercentage       Float              @default(0.0)
+  minAmount           Float?
+  maxAmount           Float?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  transactions PaymentTransaction[]
+
+  @@unique([name])
+  @@index([isActive])
+}
+
+enum PaymentGatewayName {
+  STC_PAY
+  MADA
+  PAYTABS
+  VISA
+  MASTERCARD
+  APPLE_PAY
+  GOOGLE_PAY
+}
+
+// Digital Wallet
+model DigitalWallet {
+  id           String               @id @default(cuid())
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float                @default(0.0)
+  currency     String               @default("SAR")
+  isActive     Boolean              @default(true)
+  walletType   WalletType           @default(USER)
+  transactions PaymentTransaction[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([userId])
+  @@index([userId])
+  @@index([isActive])
+}
+
+enum WalletType {
+  USER
+  ENTERPRISE
+  PROJECT
+  INSTITUTION
+}
+
+// Payment Transaction
+model PaymentTransaction {
+  id                   String            @id @default(cuid())
+  transactionId        String            @unique // External transaction ID
+  userId               String?
+  user                 User?             @relation(fields: [userId], references: [id])
+  walletId             String?
+  wallet               DigitalWallet?    @relation(fields: [walletId], references: [id])
+  gatewayId            String
+  gateway              PaymentGateway    @relation(fields: [gatewayId], references: [id])
+  amount               Float
+  currency             String            @default("SAR")
+  status               TransactionStatus @default(PENDING)
+  paymentMethod        PaymentMethod
+  paymentType          PaymentType
+  description          String?
+  metadata             Json? // Additional transaction data
+  // Related entities
+  invoiceId            String?
+  invoice              Invoice?          @relation(fields: [invoiceId], references: [id])
+  subscriptionId       String?
+  subscription         Subscription?     @relation(fields: [subscriptionId], references: [id])
+  projectId            String?
+  project              Project?          @relation(fields: [projectId], references: [id])
+  fundingCallId        String?
+  // Gateway response
+  gatewayResponse      Json?
+  gatewayTransactionId String?
+  // Security
+  encryptedCardData    String? // Tokenized card data
+  fraudScore           Float?
+  fraudAlertId         String?
+  fraudAlert           FraudAlert?
+  // Timestamps
+  initiatedAt          DateTime          @default(now())
+  completedAt          DateTime?
+  failedAt             DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  refunds   Refund[]
+  disputes  Dispute[]          @relation("TransactionDisputes")
+  auditLogs TransactionAudit[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentType])
+  @@index([gatewayId])
+  @@index([createdAt])
+  @@index([transactionId])
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  DISPUTED
+}
+
+enum PaymentMethod {
+  CARD
+  WALLET
+  BANK_TRANSFER
+  STC_PAY
+  MADA
+  APPLE_PAY
+  GOOGLE_PAY
+}
+
+enum PaymentType {
+  SUBSCRIPTION
+  INVOICE
+  PROJECT_FUNDING
+  CO_FUNDING
+  LICENSING
+  DATA_ACCESS
+  PREMIUM_FEATURE
+  REFUND
+  DISBURSEMENT
+  CUSTOM
+}
+
+// Invoice
+model Invoice {
+  id            String               @id @default(cuid())
+  invoiceNumber String               @unique
+  userId        String?
+  user          User?                @relation(fields: [userId], references: [id])
+  institutionId String?
+  institution   Institution?         @relation(fields: [institutionId], references: [id])
+  amount        Float
+  currency      String               @default("SAR")
+  taxAmount     Float                @default(0.0)
+  totalAmount   Float
+  status        InvoiceStatus        @default(DRAFT)
+  dueDate       DateTime
+  paidAt        DateTime?
+  items         Json // Invoice line items
+  notes         String?
+  transactions  PaymentTransaction[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([institutionId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([invoiceNumber])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+  PARTIALLY_PAID
+}
+
+// Subscription
+model Subscription {
+  id                 String               @id @default(cuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId      String?
+  institution        Institution?         @relation(fields: [institutionId], references: [id])
+  planId             String
+  planName           String
+  planType           SubscriptionPlanType
+  amount             Float
+  currency           String               @default("SAR")
+  billingCycle       BillingCycle
+  status             SubscriptionStatus   @default(ACTIVE)
+  startDate          DateTime
+  endDate            DateTime?
+  nextBillingDate    DateTime?
+  autoRenew          Boolean              @default(true)
+  cancelledAt        DateTime?
+  cancellationReason String?
+  transactions       PaymentTransaction[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([institutionId])
+  @@index([status])
+  @@index([nextBillingDate])
+}
+
+enum SubscriptionPlanType {
+  BASIC
+  PREMIUM
+  ENTERPRISE
+  INSTITUTIONAL
+  CUSTOM
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ONE_TIME
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+  PENDING
+}
+
+// Refund
+model Refund {
+  id              String             @id @default(cuid())
+  refundId        String             @unique
+  transactionId   String
+  transaction     PaymentTransaction @relation(fields: [transactionId], references: [id])
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  amount          Float
+  currency        String             @default("SAR")
+  reason          RefundReason
+  description     String?
+  status          RefundStatus       @default(PENDING)
+  processedAt     DateTime?
+  gatewayRefundId String?
+  gatewayResponse Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([transactionId])
+  @@index([userId])
+  @@index([status])
+  @@index([refundId])
+}
+
+enum RefundReason {
+  USER_REQUEST
+  MERCHANT_ERROR
+  FRAUDULENT
+  DUPLICATE
+  CANCELLED_SERVICE
+  DISPUTE_RESOLUTION
+  OTHER
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Dispute
+model Dispute {
+  id            String              @id @default(cuid())
+  disputeId     String              @unique
+  transactionId String
+  transaction   PaymentTransaction? @relation("TransactionDisputes", fields: [transactionId], references: [id])
+  userId        String
+  user          User                @relation(fields: [userId], references: [id])
+  type          DisputeType
+  reason        DisputeReason
+  description   String
+  status        DisputeStatus       @default(OPEN)
+  resolution    String?
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  evidence      Json? // Evidence documents/files
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([transactionId])
+  @@index([userId])
+  @@index([status])
+  @@index([disputeId])
+}
+
+enum DisputeType {
+  CHARGEBACK
+  REFUND_REQUEST
+  FRAUD_CLAIM
+  SERVICE_ISSUE
+  BILLING_ERROR
+}
+
+enum DisputeReason {
+  UNAUTHORIZED
+  PRODUCT_NOT_RECEIVED
+  PRODUCT_DEFECTIVE
+  DUPLICATE_CHARGE
+  SUBSCRIPTION_CANCELLED
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+// Transaction Audit Log
+model TransactionAudit {
+  id              String             @id @default(cuid())
+  transactionId   String
+  transaction     PaymentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  action          AuditAction
+  performedBy     String?
+  performedByRole String?
+  details         Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime           @default(now())
+
+  @@index([transactionId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum AuditAction {
+  CREATED
+  PROCESSED
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+  STATUS_CHANGED
+  GATEWAY_RESPONSE
+  FRAUD_CHECKED
+  ACCESSED
+  EXPORTED
+}
+
+// Fraud Alert
+model FraudAlert {
+  id            String              @id @default(cuid())
+  transactionId String?             @unique
+  transaction   PaymentTransaction? @relation(fields: [transactionId], references: [id])
+  userId        String?
+  user          User?               @relation(fields: [userId], references: [id])
+  alertType     FraudAlertType
+  severity      FraudSeverity
+  score         Float
+  description   String
+  detectedBy    String              @default("AI_FRAUD_DETECTION")
+  status        FraudAlertStatus    @default(ACTIVE)
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  actionTaken   String?
+  resolvedAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([transactionId])
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+enum FraudAlertType {
+  UNUSUAL_AMOUNT
+  UNUSUAL_FREQUENCY
+  UNUSUAL_LOCATION
+  CARD_VELOCITY
+  ACCOUNT_COMPROMISE
+  PATTERN_ANOMALY
+  RISK_SCORE_THRESHOLD
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FraudAlertStatus {
+  ACTIVE
+  REVIEWED
+  RESOLVED
+  FALSE_POSITIVE
+  IGNORED
+}
+
+// ============================================
+// Top-Down Collaboration Model - New Models
+// ============================================
+
+model ProposalEvaluation {
+  id                String   @id @default(cuid())
+  proposalId        String   @unique
+  proposal          Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  overallScore      Float
+  qualityScore      Float
+  innovationScore   Float
+  feasibilityScore  Float
+  alignmentScore    Float    // National priorities alignment
+  tier              ProposalTier
+  evaluationMethod  String   @default("rule-based") // "rule-based" | "ai" | "hybrid"
+  factors           Json     // Detailed scoring factors
+  suggestions       String[] @default([])
+  checklist         Json     // Evaluation checklist
+  evaluatedAt       DateTime @default(now())
+  evaluatedBy       String   // System identifier
+
+  @@index([tier])
+  @@index([overallScore])
+}
+
+model EnterpriseInterest {
+  id                String   @id @default(cuid())
+  proposalId        String
+  proposal          Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  institutionId     String   // Company/Enterprise institution
+  institution       Institution @relation("EnterpriseInterests", fields: [institutionId], references: [id])
+  interestLevel     InterestLevel @default(MEDIUM)
+  status            InterestStatus @default(EXPRESSED)
+  feedback          String?
+  contactRequested   Boolean  @default(false)
+  meetingRequested  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([proposalId, institutionId])
+  @@index([proposalId])
+  @@index([institutionId])
+}
+
+model ProposalMatch {
+  id                String   @id @default(cuid())
+  proposalId        String
+  proposal          Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  enterpriseId      String   // Matched enterprise institution
+  enterprise        Institution @relation("ProposalMatches", fields: [enterpriseId], references: [id])
+  matchScore        Float    // 0-100 matching score
+  domainAlignment   Float    // Domain match percentage
+  capabilityMatch   Float    // Capability match percentage
+  reasons           String[] @default([]) // Why this match
+  suggestedAt       DateTime @default(now())
+  isAccepted        Boolean  @default(false)
+  acceptedAt        DateTime?
+
+  @@unique([proposalId, enterpriseId])
+  @@index([proposalId])
+  @@index([enterpriseId])
+  @@index([matchScore])
+}
+
+model ProposalFeedback {
+  id                String   @id @default(cuid())
+  proposalId        String
+  proposal          Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  feedbackBy        String   // User ID or institution ID
+  feedbackType      FeedbackType
+  content           String
+  isPublic          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([proposalId])
+  @@index([feedbackType])
+}
+
+model ProposalApproval {
+  id                String   @id @default(cuid())
+  proposalId        String
+  proposal          Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  level             ApprovalLevel
+  approverId        String?  // User ID
+  approver          User?    @relation("ProposalApprovals", fields: [approverId], references: [id])
+  status            ApprovalStatus @default(PENDING)
+  comments          String?
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([proposalId, level])
+  @@index([proposalId])
+  @@index([status])
+}
+
+enum ProposalTier {
+  TIER_1  // High impact, ready for partnership
+  TIER_2  // Good potential, needs refinement
+  TIER_3  // Early stage, requires development
+  TIER_4  // Not ready for partnership
+}
+
+enum ProposalConversionStatus {
+  NOT_CONVERTED
+  IN_CONVERSION
+  CONVERTED
+  FAILED
+}
+
+enum InterestLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum InterestStatus {
+  EXPRESSED
+  CONTACTED
+  NEGOTIATING
+  PARTNERSHIP_FORMED
+  DECLINED
+}
+
+enum FeedbackType {
+  COMPANY_FEEDBACK
+  REVIEWER_COMMENT
+  MINISTRY_FEEDBACK
+  GENERAL
+}
+
+enum ApprovalLevel {
+  INSTITUTIONAL_ADMIN
+  MINISTRY
+  INDUSTRY_SELECTION
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+// ============================================
+// Early Research Engagement in Schools Module
+// ============================================
+
+model StudentProject {
+  id                    String                @id @default(cuid())
+  title                 String
+  description           String
+  studentId             String
+  student               User                  @relation("StudentProjects", fields: [studentId], references: [id], onDelete: Cascade)
+  teacherId             String?               // Supervising teacher
+  teacher               User?                 @relation("TeacherSupervisedProjects", fields: [teacherId], references: [id])
+  schoolId              String
+  school                Institution           @relation("SchoolStudentProjects", fields: [schoolId], references: [id])
+  clubId                String?               // Optional: linked to innovation club
+  club                  InnovationClub?       @relation(fields: [clubId], references: [id])
+  templateId            String?               // Simplified template used
+  template              StudentProjectTemplate? @relation(fields: [templateId], references: [id])
+  status                StudentProjectStatus  @default(DRAFT)
+  difficulty            ProjectDifficulty     @default(BEGINNER)
+  category              String?               // Research category
+  nationalPriorityTags  String[]              @default([]) // Alignment with national priorities
+  aiSuggested           Boolean               @default(false) // Was this AI-suggested?
+  mentorId              String?               // Assigned mentor
+  mentor                User?                 @relation("MentoredStudentProjects", fields: [mentorId], references: [id])
+  milestones            StudentMilestone[]
+  submissions          StudentSubmission[]
+  badges                StudentBadge[]
+  competitionId         String?               // If entered in competition
+  competition           Competition?          @relation("CompetitionProjects", fields: [competitionId], references: [id])
+  convertedToProjectId  String?               // If promoted to full project
+  convertedToProject     Project?              @relation("StudentProjectConversion", fields: [convertedToProjectId], references: [id])
+  competitionRegistrations CompetitionRegistration[]
+  certificates          Certificate[]         @relation("ProjectCertificates")
+  mentorships           SchoolMentorship[]    @relation("MentoredProjects")
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([difficulty])
+}
+
+model StudentMilestone {
+  id            String        @id @default(cuid())
+  projectId     String
+  project       StudentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  status        MilestoneStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([projectId])
+}
+
+model StudentSubmission {
+  id            String        @id @default(cuid())
+  projectId     String
+  project       StudentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User          @relation("StudentSubmissions", fields: [studentId], references: [id])
+  content       String        // Submission content/description
+  fileUrl       String?       // Optional file attachment
+  s3Key         String?
+  teacherFeedback String?     // Teacher's feedback
+  teacherFeedbackAt DateTime?
+  score         Int?          // Optional scoring
+  status        SubmissionStatus @default(SUBMITTED)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([studentId])
+}
+
+model InnovationClub {
+  id                String          @id @default(cuid())
+  name              String
+  description       String?
+  schoolId          String
+  school            Institution     @relation("SchoolInnovationClubs", fields: [schoolId], references: [id])
+  advisorId         String          // Teacher advisor
+  advisor           User            @relation("ClubAdvisor", fields: [advisorId], references: [id])
+  status            ClubStatus      @default(PENDING) // PENDING, ACTIVE, INACTIVE
+  recognizedBy      String?         // Platform recognition level
+  members           ClubMember[]
+  projects          StudentProject[]
+  achievements      ClubAchievement[]
+  certificates      Certificate[]    @relation("ClubCertificates")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@index([status])
+}
+
+model ClubMember {
+  id          String        @id @default(cuid())
+  clubId      String
+  club        InnovationClub @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User          @relation("ClubMemberships", fields: [studentId], references: [id], onDelete: Cascade)
+  role        ClubRole      @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+  leftAt      DateTime?
+
+  @@unique([clubId, studentId])
+  @@index([studentId])
+}
+
+model ClubAchievement {
+  id          String        @id @default(cuid())
+  clubId      String
+  club        InnovationClub @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        AchievementType
+  awardedAt   DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  @@index([clubId])
+}
+
+model StudentBadge {
+  id            String        @id @default(cuid())
+  studentId     String
+  student       User          @relation("StudentBadges", fields: [studentId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       StudentProject? @relation(fields: [projectId], references: [id])
+  badgeType     BadgeType
+  title         String
+  description   String?
+  icon          String?       // Badge icon/emoji
+  points        Int           @default(0) // Gamification points
+  earnedAt      DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+
+  @@index([studentId])
+  @@index([badgeType])
+}
+
+model StudentProjectTemplate {
+  id                String          @id @default(cuid())
+  title             String
+  description       String
+  category          String
+  difficulty        ProjectDifficulty @default(BEGINNER)
+  templateContent   String          // Template structure/content
+  suggestedDuration Int?            // Days
+  learningObjectives String[]        @default([])
+  requiredResources String[]        @default([])
+  isPublic          Boolean         @default(true)
+  createdBy         String?         // User ID
+  projects          StudentProject[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([difficulty])
+  @@index([category])
+}
+
+model Competition {
+  id                String          @id @default(cuid())
+  title             String
+  description       String
+  type              CompetitionType
+  startDate         DateTime
+  endDate           DateTime
+  registrationDeadline DateTime
+  isNational        Boolean         @default(false)
+  eligibility       CompetitionEligibility
+  categories        String[]        @default([])
+  prizes            Json?           // Prize structure
+  judges            CompetitionJudge[]
+  projects          StudentProject[] @relation("CompetitionProjects")
+  registrations     CompetitionRegistration[]
+  certificates      Certificate[]    @relation("CompetitionCertificates")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([type])
+  @@index([startDate])
+  @@index([isNational])
+}
+
+model CompetitionJudge {
+  id            String        @id @default(cuid())
+  competitionId String
+  competition   Competition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  judgeId       String
+  judge         User          @relation("CompetitionJudges", fields: [judgeId], references: [id])
+  role          JudgeRole     @default(JUDGE)
+  createdAt     DateTime      @default(now())
+
+  @@unique([competitionId, judgeId])
+  @@index([competitionId])
+}
+
+model CompetitionRegistration {
+  id            String        @id @default(cuid())
+  competitionId String
+  competition   Competition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  projectId     String
+  project       StudentProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  registeredAt  DateTime      @default(now())
+  status        CompetitionRegistrationStatus @default(REGISTERED)
+
+  @@unique([competitionId, projectId])
+  @@index([competitionId])
+}
+
+model Certificate {
+  id                String          @id @default(cuid())
+  recipientId       String
+  recipient         User            @relation("Certificates", fields: [recipientId], references: [id], onDelete: Cascade)
+  certificateType   CertificateType
+  title             String
+  description       String?
+  issuer            String          @default("National R&D Platform")
+  projectId         String?         // Related project
+  project           StudentProject? @relation("ProjectCertificates", fields: [projectId], references: [id])
+  competitionId     String?         // Related competition
+  competition       Competition?    @relation("CompetitionCertificates", fields: [competitionId], references: [id])
+  clubId            String?         // Related club
+  club              InnovationClub? @relation("ClubCertificates", fields: [clubId], references: [id])
+  certificateUrl    String?         // Digital certificate file URL
+  verificationCode  String          @unique // For verification
+  issuedAt          DateTime        @default(now())
+  expiresAt         DateTime?       // Optional expiration
+  createdAt         DateTime        @default(now())
+
+  @@index([recipientId])
+  @@index([certificateType])
+  @@index([verificationCode])
+}
+
+model SchoolMentorship {
+  id                String          @id @default(cuid())
+  schoolId          String
+  school            Institution     @relation("SchoolMentorships", fields: [schoolId], references: [id])
+  mentorId          String
+  mentor            User            @relation("SchoolMentors", fields: [mentorId], references: [id])
+  studentId         String?         // Optional: specific student
+  student           User?           @relation("MentoredStudents", fields: [studentId], references: [id])
+  projectId         String?         // Optional: specific project
+  project           StudentProject? @relation("MentoredProjects", fields: [projectId], references: [id])
+  status            MentorshipStatus @default(ACTIVE)
+  startDate         DateTime        @default(now())
+  endDate           DateTime?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([schoolId])
+  @@index([mentorId])
+  @@index([studentId])
+  @@index([status])
+}
+
+enum StudentProjectStatus {
+  DRAFT
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  REVIEWED
+  APPROVED
+  NEEDS_REVISION
+}
+
+enum ClubStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ClubRole {
+  PRESIDENT
+  VICE_PRESIDENT
+  SECRETARY
+  MEMBER
+}
+
+enum AchievementType {
+  PROJECT_COMPLETION
+  COMPETITION_WIN
+  INNOVATION_AWARD
+  RESEARCH_MILESTONE
+  CLUB_LEADERSHIP
+}
+
+enum BadgeType {
+  FIRST_PROJECT
+  RESEARCHER
+  INNOVATOR
+  COLLABORATOR
+  MENTOR
+  COMPETITION_WINNER
+  MILESTONE_ACHIEVER
+  CONSISTENT_LEARNER
+}
+
+enum CompetitionType {
+  INNOVATION_FAIR
+  SCIENCE_FAIR
+  HACKATHON
+  RESEARCH_CHALLENGE
+  DESIGN_COMPETITION
+  ONLINE_EXHIBITION
+}
+
+enum CompetitionEligibility {
+  ELEMENTARY
+  MIDDLE_SCHOOL
+  HIGH_SCHOOL
+  ALL_SCHOOLS
+}
+
+enum JudgeRole {
+  JUDGE
+  COORDINATOR
+  REVIEWER
+}
+
+enum CompetitionRegistrationStatus {
+  REGISTERED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum CertificateType {
+  PROJECT_COMPLETION
+  COMPETITION_PARTICIPATION
+  COMPETITION_WINNER
+  CLUB_MEMBERSHIP
+  RESEARCH_ACHIEVEMENT
+  MENTORSHIP_COMPLETION
+  TEACHER_FACILITATOR
+  SCHOOL_RECOGNITION
+}
+
+enum MentorshipStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  TERMINATED
+}

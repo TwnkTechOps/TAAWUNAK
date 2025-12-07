@@ -1,0 +1,28 @@
+{
+  "realm": "tawawunak",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "clients": [
+    {
+      "clientId": "tawawunak-web-api",
+      "name": "TAWAWUNAK Web API",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "CHANGE_ME_IN_ADMIN",
+      "redirectUris": [
+        "http://localhost:4311/auth/oidc/keycloak/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:4321"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "post.logout.redirect.uris": "+"
+      }
+    }
+  ]
+}
+

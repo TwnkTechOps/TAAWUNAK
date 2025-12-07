@@ -1,0 +1,38 @@
+{
+  "nav": {
+    "brand": "KSA EdTech",
+    "projects": "Projects",
+    "funding": "Funding",
+    "proposals": "Proposals",
+    "papers": "Papers",
+    "admin": "Admin"
+  },
+  "home": {
+    "title": "Welcome to the KSA Collaborative EdTech Platform",
+    "subtitle": "Connect universities, schools, research centers, and industry partners.",
+    "cta": {
+      "startProject": "Start a project",
+      "findFunding": "Find funding"
+    },
+    "kpi": {
+      "projects": "Active Projects",
+      "funding": "Funding Secured",
+      "papers": "Papers",
+      "partners": "Industry Partners",
+      "deltaUp": "+{value} since last month",
+      "updated": "Updated just now"
+    },
+    "cards": {
+      "projects": "Projects",
+      "projectsDesc": "Create and manage collaborative R&D projects.",
+      "funding": "Funding",
+      "fundingDesc": "Discover and apply to funding calls.",
+      "proposals": "Proposals",
+      "proposalsDesc": "Submit and review research proposals.",
+      "papers": "Papers",
+      "papersDesc": "Submit and publish research papers.",
+      "open": "Open"
+    }
+  }
+}
+

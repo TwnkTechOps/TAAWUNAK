@@ -1,0 +1,2 @@
+export type Role = "ADMIN" | "INSTITUTION_ADMIN" | "RESEARCHER" | "REVIEWER" | "COMPANY_USER" | "STUDENT";
+
