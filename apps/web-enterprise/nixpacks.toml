@@ -1,0 +1,21 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = [
+  "corepack enable",
+  "corepack prepare pnpm@latest --activate",
+  "cd apps/web-enterprise && pnpm install --frozen-lockfile"
+]
+
+[phases.build]
+cmds = [
+  "cd apps/web-enterprise && pnpm build"
+]
+
+[start]
+cmd = "cd apps/web-enterprise && PORT=4320 node .next/standalone/apps/web-enterprise/server.js"
+
+[providers]
+node = "20"
+

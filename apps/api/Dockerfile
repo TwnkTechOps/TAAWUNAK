@@ -1,6 +1,9 @@
 # Backend Dockerfile - NestJS
 FROM node:20-alpine AS base
 
+# Install required dependencies for Prisma
+RUN apk add --no-cache openssl1.1-compat libc6-compat
+
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -31,6 +34,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Install required dependencies for Prisma
+RUN apk add --no-cache openssl1.1-compat libc6-compat
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
