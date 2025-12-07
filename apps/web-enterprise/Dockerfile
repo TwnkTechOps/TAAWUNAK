@@ -47,9 +47,9 @@ COPY --from=base /app/apps/web-enterprise/public ./public
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 4320
 
-ENV PORT=3000
+ENV PORT=4320
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
