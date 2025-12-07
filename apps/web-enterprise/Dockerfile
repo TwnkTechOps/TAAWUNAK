@@ -38,12 +38,10 @@ RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs
 
 # Copy built application
-# Create public directory and copy if it exists
-RUN mkdir -p ./public
-COPY --from=base /app/apps/web-enterprise/.next/standalone ./
-COPY --from=base /app/apps/web-enterprise/.next/static ./.next/static
-# Copy public directory (optional - will fail silently if doesn't exist in build context)
-COPY --from=base /app/apps/web-enterprise/public ./public
+# The standalone output includes everything needed
+COPY --from=base --chown=nextjs:nodejs /app/apps/web-enterprise/.next/standalone ./
+COPY --from=base --chown=nextjs:nodejs /app/apps/web-enterprise/.next/static ./apps/web-enterprise/.next/static
+COPY --from=base --chown=nextjs:nodejs /app/apps/web-enterprise/public ./apps/web-enterprise/public
 
 USER nextjs
 

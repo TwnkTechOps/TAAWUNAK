@@ -1,23 +1,69 @@
-node_modules
-.next
+# Git
 .git
 .gitignore
+.gitattributes
+
+# Documentation
 *.md
-.env
-.env.local
-.env*.local
-dist
-build
-coverage
-.nyc_output
-.vscode
-.idea
-*.log
-*.pid
-*.seed
-.DS_Store
-Thumbs.db
-docker-compose*.yml
+!README.md
+docs/
+
+# Docker
 Dockerfile*
+docker-compose*.yml
 .dockerignore
 
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# Build outputs (we copy what we need)
+.next
+dist
+build
+out
+
+# Dependencies (will be installed in container)
+node_modules
+.pnpm-store
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Misc
+.turbo
+*.tsbuildinfo
+.cache
+
+# Railway
+railway.json
+railway.toml
+*.railway.json
+*.railway.toml
