@@ -43,8 +43,8 @@ COPY apps/api/package.json ./apps/api/
 RUN pnpm install --prod --frozen-lockfile
 
 # Copy built application, Prisma, and node_modules (includes generated Prisma client)
-COPY --from=base /app/apps/api/dist ./dist
-COPY --from=base /app/apps/api/prisma ./prisma
+COPY --from=base /app/apps/api/dist ./apps/api/dist
+COPY --from=base /app/apps/api/prisma ./apps/api/prisma
 COPY --from=base /app/node_modules ./node_modules
 
 EXPOSE 4312
